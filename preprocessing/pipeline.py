@@ -7,6 +7,17 @@ from sklearn.ensemble import RandomForestRegressor
 
 # === Custom Transformers ===
 
+class ColumnDropper(BaseEstimator, TransformerMixin):
+  def __init__(self, columns_to_drop=[]):
+    self.columns_to_drop = columns_to_drop
+
+  def fit(self, X, y=None):
+    self.fitted_ = True
+    return self
+
+  def transform(self, X):
+    return X.drop(columns=self.columns_to_drop, errors='ignore')
+
 class CategoricalNaFiller(BaseEstimator, TransformerMixin):
   def __init__(self, excluded_cols=[]):
     self.excluded_cols = excluded_cols
@@ -124,6 +135,7 @@ class OneHotEncoderScaler(BaseEstimator, TransformerMixin):
 def get_preprocessor():
   return Pipeline(steps=[
     ('preprocessing', Pipeline(steps=[
+      ("drop_id", ColumnDropper(columns_to_drop=["Id"])),
       ("cat_na_fill", CategoricalNaFiller(excluded_cols=['GarageYrBlt'])),
       ("num_na_fill", NumericalNaFiller(excluded_cols=['LotFrontage'])), # Example - MasVnrArea
       ("garage_bin", GarageYrBltBinner()),
