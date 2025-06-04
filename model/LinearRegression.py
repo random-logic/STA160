@@ -10,6 +10,8 @@ from sklearn.metrics import mean_squared_error, r2_score, make_scorer
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.model_selection import cross_val_predict, KFold
 
+import scipy.stats as stats
+
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -106,6 +108,15 @@ plt.xlabel("Predicted SalePrice")
 plt.ylabel("Residuals")
 plt.title("Residuals vs Predicted SalePrice")
 plt.tight_layout()
+plt.savefig("../fig/lr/residuals_vs_predicted.png")
+plt.show()
+
+# %%
+# === Check normality of residuals
+plt.figure(figsize=(6, 6))
+stats.probplot(residuals, dist="norm", plot=plt)
+plt.title("Q-Q Plot of Residuals")
+plt.savefig("../fig/lr/qq_plot_residuals.png")
 plt.show()
 
 # %%
