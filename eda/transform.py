@@ -30,6 +30,21 @@ for col in high_skew_cols:
     plt.show()
 
 # %%
+# === Log1p transform highly skewed features ===
+df_log_transformed = df.copy()
+for col in high_skew_cols:
+    df_log_transformed[col] = np.log1p(df_log_transformed[col])
+
+# Boxplots of transformed features
+for col in high_skew_cols:
+    plt.figure(figsize=(6, 4))
+    sns.boxplot(x=df_log_transformed[col])
+    plt.title(f'Boxplot of Log-Transformed {col}')
+    plt.xlabel(col)
+    plt.tight_layout()
+    plt.show()
+
+# %%
 # === Target variable distribution ===
 plt.figure(figsize=(8, 5))
 sns.histplot(df['SalePrice'], kde=True)

@@ -38,6 +38,9 @@ class CategoricalNaFiller(BaseEstimator, TransformerMixin):
     X[cat_cols] = X[cat_cols].fillna("None")
     return X
 
+  def get_feature_names_out(self, input_features=None):
+    return input_features
+
 class GarageYrBltBinner(BaseEstimator, TransformerMixin):
   def fit(self, X, y=None):
     self.fitted_ = True
@@ -64,6 +67,9 @@ class GarageYrBltBinner(BaseEstimator, TransformerMixin):
     X["GarageYrBlt"] = X["GarageYrBlt"].apply(bin_year).astype("category")
     return X
 
+  def get_feature_names_out(self, input_features=None):
+    return input_features
+
 class NumericalNaFiller(BaseEstimator, TransformerMixin):
   def __init__(self, excluded_cols=[]):
     self.excluded_cols = excluded_cols
@@ -77,6 +83,9 @@ class NumericalNaFiller(BaseEstimator, TransformerMixin):
     num_cols = X.select_dtypes(include=["number"]).columns.difference(self.excluded_cols)
     X[num_cols] = X[num_cols].fillna(0)
     return X
+
+  def get_feature_names_out(self, input_features=None):
+    return input_features
 
 class LotFrontageFiller(BaseEstimator, TransformerMixin):
   def __init__(self):
@@ -113,6 +122,9 @@ class LotFrontageFiller(BaseEstimator, TransformerMixin):
     X.loc[X['LotFrontage'].isnull(), 'LotFrontage'] = self.model.predict(X_test)
 
     return X
+
+  def get_feature_names_out(self, input_features=None):
+    return input_features
   
 class OneHotEncoderScaler(BaseEstimator, TransformerMixin):
   def __init__(self):

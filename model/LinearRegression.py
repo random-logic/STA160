@@ -80,11 +80,6 @@ avg_train_rmse = np.mean(train_rmses)
 print(f"Average Training RMSE (across CV folds): {avg_train_rmse:.2f}")
 
 # %%
-# === Check skewness of numeric features only ===
-numeric_cols = X_train.select_dtypes(include=["int64", "float64"]).columns
-X_train[numeric_cols].skew().sort_values(ascending=False)
-
-# %%
 # === Fit on full training data ===
 model_pipeline.fit(X_train, y_train)
 
@@ -96,6 +91,24 @@ train_r2 = r2_score(y_train, y_train_pred)
 
 print(f"Train RMSE: {train_rmse:.2f}")
 print(f"Train R² Score: {train_r2:.4f}")
+
+# %%
+# === Feature Importances (Linear Model Coefficients) ===
+feature_names = model_pipeline.named_steps['preprocessor'].get_feature_names_out()
+coefs = model_pipeline.named_steps['model'].regressor_.coef_
+
+coef_df = pd.DataFrame({
+    'Feature': feature_names,
+    'Coefficient': coefs
+}).sort_values(by='Coefficient', key=np.abs, ascending=False)
+
+plt.figure(figsize=(10, 12))
+plt.barh(coef_df['Feature'][:30][::-1], coef_df['Coefficient'][:30][::-1])  # Top 30
+plt.xlabel("Coefficient Value")
+plt.title("Top 30 Feature Importances (Ridge Regression Coefficients)")
+plt.tight_layout()
+plt.savefig("../fig/lr/feature_importances.png")
+plt.show()
 
 # %%
 # === Plot Residuals ===
