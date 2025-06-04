@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import Pipeline
@@ -17,6 +18,11 @@ class ColumnDropper(BaseEstimator, TransformerMixin):
 
   def transform(self, X):
     return X.drop(columns=self.columns_to_drop, errors='ignore')
+
+  def get_feature_names_out(self, input_features=None):
+    if input_features is None:
+      return None
+    return [f for f in input_features if f not in self.columns_to_drop]
 
 class CategoricalNaFiller(BaseEstimator, TransformerMixin):
   def __init__(self, excluded_cols=[]):
@@ -130,6 +136,11 @@ class OneHotEncoderScaler(BaseEstimator, TransformerMixin):
     X_cat = self.cat_encoder.transform(X[self.cat_cols])
     X_num = self.num_scaler.transform(X[self.num_cols])
     return pd.concat([X_num, X_cat], axis=1)
+  
+  def get_feature_names_out(self, input_features=None):
+    cat_feature_names = self.cat_encoder.get_feature_names_out(self.cat_cols)
+    num_feature_names = self.num_cols
+    return np.array(list(num_feature_names) + list(cat_feature_names))
 
 # === Pipeline Creation ===
 def get_preprocessor():
