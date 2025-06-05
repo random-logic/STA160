@@ -194,7 +194,7 @@ def get_preprocessor():
       ("num_na_fill", NumericalNaFiller(excluded_cols=['LotFrontage'])), # Example - MasVnrArea
       ("garage_bin", GarageYrBltBinner()),
       ("lotfrontage_fill", LotFrontageFiller()),
-      ("skewed_transform", SkewedFeatureTransformer()),
+      # ("skewed_transform", SkewedFeatureTransformer()),
     ])),
     ('transformer', OneHotEncoderScaler()),
   ])

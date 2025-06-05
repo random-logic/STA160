@@ -44,24 +44,24 @@ model_pipeline = Pipeline([
 # %%
 # === Hyperparameter Tuning with GridSearchCV ===
 param_grid = {
-  "model__regressor__n_estimators": [50], # 20, 50, 100, 200
-  "model__regressor__max_depth": [15], # None, 10, 15, 20
-  "model__regressor__min_samples_leaf": [2], # 4
-  "model__regressor__min_samples_split": [2], # 5
-  "model__regressor__max_features": [0.5] # "sqrt"
+  "model__regressor__max_depth": [10, 20, None],
+  "model__regressor__min_samples_split": [2, 5],
+  "model__regressor__max_features": ["sqrt", "log2", 0.5]
 }
 
-grid_search = GridSearchCV(model_pipeline, param_grid, cv=10,
+# Use a KFold object with shuffle=True and a fixed random_state
+kf = KFold(n_splits=10, shuffle=True, random_state=42)
+grid_search = GridSearchCV(model_pipeline, param_grid, cv=kf,
                            scoring="neg_root_mean_squared_error",
                            n_jobs=-1, verbose=1)
-
 
 grid_search.fit(X_train, y_train)
 
 # Compute RMSE on cross-validated predictions from the training set
 from sklearn.model_selection import cross_val_predict
 
-cv_train_preds = cross_val_predict(grid_search, X_train, y_train, cv=10)
+# Use the same KFold object for cross_val_predict
+cv_train_preds = cross_val_predict(grid_search, X_train, y_train, cv=kf)
 cv_train_rmse = np.sqrt(mean_squared_error(y_train, cv_train_preds))
 print(f"Train RMSE (from CV predictions): {cv_train_rmse:.2f}")
 print(f"Best CV RMSE: {-grid_search.best_score_:.2f}")
@@ -69,6 +69,29 @@ print(f"Best parameters: {grid_search.best_params_}")
 
 # Use the best estimator from the search for further evaluation
 model_pipeline = grid_search.best_estimator_
+
+# %%
+# === Evaluate overfitting using a train-test split ===
+from sklearn.model_selection import train_test_split
+
+# Split training data to evaluate overfitting
+X_subtrain, X_val, y_subtrain, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=42)
+
+model_pipeline.fit(X_subtrain, y_subtrain)
+y_val_pred = model_pipeline.predict(X_val)
+val_rmse = np.sqrt(mean_squared_error(y_val, y_val_pred))
+val_r2 = r2_score(y_val, y_val_pred)
+
+print(f"Validation RMSE: {val_rmse:.2f}")
+print(f"Validation R² Score: {val_r2:.4f}")
+
+y_subtrain_pred = model_pipeline.predict(X_subtrain)
+train_rmse = np.sqrt(mean_squared_error(y_subtrain, y_subtrain_pred))
+train_r2 = r2_score(y_subtrain, y_subtrain_pred)
+
+print(f"Training RMSE: {train_rmse:.2f}")
+print(f"Training R² Score: {train_r2:.4f}")
+
 
 # %%
 # === Fit on full training data ===
@@ -84,7 +107,7 @@ print(f"Train RMSE: {train_rmse:.2f}")
 print(f"Train R² Score: {train_r2:.4f}")
 
 # %%
-# === Check if overfitting ===
+# === Check if overfitting using CV ===
 print(f"Best CV RMSE: {-grid_search.best_score_:.2f}")
 print(f"Train RMSE: {train_rmse:.2f}")
 
