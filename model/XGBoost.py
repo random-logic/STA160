@@ -126,6 +126,37 @@ plt.savefig(os.path.join(output_dir, "feature_importances.png"))
 plt.show()
 
 # %%
+# === Retrain using only relevant features (Importance > 0.001) ===
+# Select relevant features based on importance threshold
+relevant_features = feat_imp_df[feat_imp_df["Importance"] > 0.001]["Feature"].values
+print(f"Selected {len(relevant_features)} relevant features with importance > 0.001")
+
+# Transform and filter training data
+model_pipeline.named_steps["preprocessor"].set_output(transform="pandas")
+X_train_transformed = model_pipeline.named_steps["preprocessor"].transform(X_train)
+X_train_filtered = X_train_transformed[relevant_features]
+
+# Reuse the best XGBRegressor from grid search
+filtered_model = model_pipeline.named_steps["model"].regressor_
+
+# Fit on filtered data
+filtered_model.fit(X_train_filtered, y_train)
+
+# Evaluate training performance
+y_train_pred_filtered = filtered_model.predict(X_train_filtered)
+train_rmse_filtered = np.sqrt(mean_squared_error(y_train, y_train_pred_filtered))
+train_r2_filtered = r2_score(y_train, y_train_pred_filtered)
+print(f"Train RMSE (filtered features): {train_rmse_filtered:.2f}")
+print(f"Train R² Score (filtered features): {train_r2_filtered:.4f}")
+
+# %%
+# Cross-validation RMSE on filtered data
+from sklearn.model_selection import cross_val_predict
+cv_preds_filtered = cross_val_predict(filtered_model, X_train_filtered, y_train, cv=10)
+cv_rmse_filtered = np.sqrt(mean_squared_error(y_train, cv_preds_filtered))
+print(f"Validation RMSE (CV) with filtered features: {cv_rmse_filtered:.2f}")
+
+# %%
 # === Predict on test data ===
 y_test_pred = model_pipeline.predict(X_test)
 
