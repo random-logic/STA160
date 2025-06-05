@@ -157,6 +157,31 @@ cv_rmse_filtered = np.sqrt(mean_squared_error(y_train, cv_preds_filtered))
 print(f"Validation RMSE (CV) with filtered features: {cv_rmse_filtered:.2f}")
 
 # %%
+# === SHAP Explanation ===
+import shap
+
+model_pipeline.named_steps["preprocessor"].set_output(transform="pandas")
+X_train_transformed = model_pipeline.named_steps["preprocessor"].transform(X_train)
+
+# Initialize SHAP explainer using filtered model and matching data
+explainer = shap.Explainer(filtered_model, X_train_filtered)
+
+# Compute SHAP values
+shap_values = explainer(X_train_filtered)
+
+# Summary plot for global feature importance
+shap.summary_plot(shap_values, X_train_filtered, show=False)
+
+# Save the plot
+shap_output_dir = "../fig/xgb"
+os.makedirs(shap_output_dir, exist_ok=True)
+plt.savefig(os.path.join(shap_output_dir, "shap_summary.png"))
+plt.close()
+
+# Optional: show SHAP values for first training instance
+shap.plots.waterfall(shap_values[0])
+
+# %%
 # === Predict on test data ===
 y_test_pred = model_pipeline.predict(X_test)
 
