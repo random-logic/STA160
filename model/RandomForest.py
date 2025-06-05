@@ -44,16 +44,23 @@ model_pipeline = Pipeline([
 # %%
 # === Hyperparameter Tuning with GridSearchCV ===
 param_grid = {
-  "model__regressor__n_estimators": [50], # 20, 50, 100, 200
-  "model__regressor__max_depth": [15], # None, 10, 15, 20
-  "model__regressor__min_samples_leaf": [2], # 4
-  "model__regressor__min_samples_split": [2], # 5
-  "model__regressor__max_features": [0.5] # "sqrt"
+  "model__regressor__n_estimators": [20, 50, 100, 200], # 50
+  "model__regressor__max_depth": [10, 15, 20, None], # 15
+  "model__regressor__min_samples_leaf": [2, 4, 6, 8], # 2
+  "model__regressor__min_samples_split": [2, 4, 6, 8], # 2
+  "model__regressor__max_features": [0.5, "sqrt", "log2"] # 0.5
 }
 
-grid_search = GridSearchCV(model_pipeline, param_grid, cv=10,
-                           scoring="neg_root_mean_squared_error",
-                           n_jobs=-1, verbose=1)
+cv = KFold(n_splits=10, shuffle=True, random_state=42)
+
+grid_search = GridSearchCV(
+  model_pipeline,
+  param_grid,
+  cv=cv,
+  scoring="neg_root_mean_squared_error",
+  n_jobs=-1,
+  verbose=1
+)
 
 
 grid_search.fit(X_train, y_train)
@@ -61,7 +68,7 @@ grid_search.fit(X_train, y_train)
 # Compute RMSE on cross-validated predictions from the training set
 from sklearn.model_selection import cross_val_predict
 
-cv_train_preds = cross_val_predict(grid_search, X_train, y_train, cv=10)
+cv_train_preds = cross_val_predict(grid_search, X_train, y_train, cv=cv)
 cv_train_rmse = np.sqrt(mean_squared_error(y_train, cv_train_preds))
 print(f"Train RMSE (from CV predictions): {cv_train_rmse:.2f}")
 print(f"Best CV RMSE: {-grid_search.best_score_:.2f}")

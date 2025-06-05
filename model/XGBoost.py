@@ -62,14 +62,14 @@ param_grid = {
   "model__regressor__min_child_weight": [3], # 1, 3, 5
 }
 
-grid_search = GridSearchCV(model_pipeline, param_grid, cv=10,
+grid_search = GridSearchCV(model_pipeline, param_grid, cv=KFold(n_splits=10, shuffle=True, random_state=42),
                            scoring="neg_root_mean_squared_error",
                            n_jobs=-1, verbose=1)
 
 grid_search.fit(X_train, y_train)
 
 # Compute RMSE on cross-validated predictions from the training set
-cv_train_preds = cross_val_predict(grid_search, X_train, y_train, cv=10)
+cv_train_preds = cross_val_predict(grid_search, X_train, y_train, cv=KFold(n_splits=10, shuffle=True, random_state=42))
 cv_train_rmse = np.sqrt(mean_squared_error(y_train, cv_train_preds))
 print(f"Train RMSE (from CV predictions): {cv_train_rmse:.2f}")
 print(f"Best CV RMSE: {-grid_search.best_score_:.2f}")
@@ -186,7 +186,7 @@ print(f"Train R² Score (filtered features): {train_r2_filtered:.4f}")
 # %%
 # Cross-validation RMSE on filtered data
 from sklearn.model_selection import cross_val_predict
-cv_preds_filtered = cross_val_predict(filtered_model, X_train_filtered, y_train, cv=10)
+cv_preds_filtered = cross_val_predict(filtered_model, X_train_filtered, y_train, cv=KFold(n_splits=10, shuffle=True, random_state=42))
 cv_rmse_filtered = np.sqrt(mean_squared_error(y_train, cv_preds_filtered))
 print(f"Validation RMSE (CV) with filtered features: {cv_rmse_filtered:.2f}")
 
