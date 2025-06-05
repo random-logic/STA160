@@ -49,6 +49,34 @@ for col in high_skew_cols:
     plt.close()
 
 # %%
+# === Pairplots of highly skewed features vs SalePrice before transformation ===
+for col in high_skew_cols:
+    plt.figure(figsize=(6, 4))
+    sns.scatterplot(x=df[col], y=df['SalePrice'])
+    plt.title(f'{col} vs SalePrice')
+    plt.xlabel(col)
+    plt.ylabel('SalePrice')
+    plt.tight_layout()
+    plt.savefig(f"../fig/eda/{col}_vs_saleprice_before.png")
+    plt.show()
+    plt.close()
+
+# %%
+# === Pairplots of highly skewed features vs SalePrice after log1p transformation ===
+
+# Create individual scatter plots for each log-transformed skewed feature vs SalePrice
+for col in high_skew_cols:
+    plt.figure(figsize=(6, 4))
+    sns.scatterplot(x=df_log_transformed[col], y=df['SalePrice'])
+    plt.title(f'Log({col}) vs SalePrice')
+    plt.xlabel(f'Log({col})')
+    plt.ylabel('SalePrice')
+    plt.tight_layout()
+    plt.savefig(f"../fig/eda/log_{col}_vs_saleprice_after.png")
+    plt.show()
+    plt.close()
+
+# %%
 # === Target variable distribution ===
 plt.figure(figsize=(8, 5))
 sns.histplot(df['SalePrice'], kde=True)
