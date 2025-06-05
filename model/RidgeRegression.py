@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import HuberRegressor
+from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error, r2_score, make_scorer
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.model_selection import cross_val_predict, KFold
@@ -32,30 +32,24 @@ y_train = train["SalePrice"]
 
 # %%
 # === Build preprocessing + modeling pipeline ===
-# Define RMSE scorer
 rmse_scorer = make_scorer(
-  lambda y_true, y_pred: np.sqrt(mean_squared_error(y_true, y_pred)),
-  greater_is_better=False
+    lambda y_true, y_pred: np.sqrt(mean_squared_error(y_true, y_pred)),
+    greater_is_better=False
 )
 
-# Update model_pipeline
 model_pipeline = Pipeline([
-  ("preprocessor", get_preprocessor()),
-  ("model", TransformedTargetRegressor(
-    regressor=HuberRegressor(max_iter=1000, epsilon=1.5),
-    func=np.log1p,
-    inverse_func=np.expm1
-  ))
+    ("preprocessor", get_preprocessor()),
+    ("model", TransformedTargetRegressor(
+        regressor=Ridge(),
+        func=np.log1p,
+        inverse_func=np.expm1
+    ))
 ])
 
-# Define parameter grid for HuberRegressor inside the TransformedTargetRegressor
 param_grid = {
-    'model__regressor__alpha': [1e-5], # 1e-4, 1e-3
-    'model__regressor__epsilon': [1.75], # 1.2, 1.35, 1.5
-    'model__regressor__max_iter': [1000] # 500, 2000
+    'model__regressor__alpha': [0.1, 1.0, 10.0]
 }
 
-# Setup GridSearchCV
 grid_search = GridSearchCV(
     estimator=model_pipeline,
     param_grid=param_grid,
@@ -65,10 +59,7 @@ grid_search = GridSearchCV(
     verbose=1
 )
 
-# Fit grid search
 grid_search.fit(X_train, y_train)
-
-# Replace model_pipeline with best estimator
 model_pipeline = grid_search.best_estimator_
 
 # %%
@@ -89,18 +80,16 @@ print(f"Train RMSE: {train_rmse:.2f}")
 print(f"Train R² Score: {train_r2:.4f}")
 
 # %%
-# === Compare training vs validation RMSE for overfitting analysis ===
+# === Compare training vs validation RMSE ===
 val_preds_cv = cross_val_predict(model_pipeline, X_train, y_train, cv=KFold(n_splits=10, shuffle=True, random_state=42))
 val_rmse = np.sqrt(mean_squared_error(y_train, val_preds_cv))
 val_r2 = r2_score(y_train, val_preds_cv)
 
-# %%
-# === Output CV ===
 print(f"Validation RMSE (CV): {val_rmse:.2f}")
 print(f"Validation R² Score (CV): {val_r2:.4f}")
 
 # %%
-# === Feature Importances (Linear Model Coefficients) ===
+# === Feature Importances (Ridge Coefficients) ===
 feature_names = model_pipeline.named_steps['preprocessor'].get_feature_names_out()
 coefs = model_pipeline.named_steps['model'].regressor_.coef_
 
@@ -110,11 +99,12 @@ coef_df = pd.DataFrame({
 }).sort_values(by='Coefficient', key=np.abs, ascending=False)
 
 plt.figure(figsize=(10, 12))
-plt.barh(coef_df['Feature'][:30][::-1], coef_df['Coefficient'][:30][::-1])  # Top 30
+plt.barh(coef_df['Feature'][:30][::-1], coef_df['Coefficient'][:30][::-1])
 plt.xlabel("Coefficient Value")
-plt.title("Top 30 Feature Importances (Huber Regression Coefficients)")
+plt.title("Top 30 Feature Importances (Ridge Regression Coefficients)")
 plt.tight_layout()
-plt.savefig("../fig/hr/feature_importances.png")
+os.makedirs("../fig/rr", exist_ok=True)
+plt.savefig("../fig/rr/feature_importances.png")
 plt.show()
 
 # %%
@@ -128,15 +118,15 @@ plt.xlabel("Predicted SalePrice")
 plt.ylabel("Residuals")
 plt.title("Residuals vs Predicted SalePrice")
 plt.tight_layout()
-plt.savefig("../fig/hr/residuals_vs_predicted.png")
+plt.savefig("../fig/rr/residuals_vs_predicted.png")
 plt.show()
 
 # %%
-# === Check normality of residuals
+# === QQ Plot of Residuals ===
 plt.figure(figsize=(6, 6))
 stats.probplot(residuals, dist="norm", plot=plt)
 plt.title("Q-Q Plot of Residuals")
-plt.savefig("../fig/hr/qq_plot_residuals.png")
+plt.savefig("../fig/rr/qq_plot_residuals.png")
 plt.show()
 
 # %%
@@ -146,14 +136,12 @@ y_test_pred = model_pipeline.predict(X_test)
 # %%
 # === Wrap in DataFrame ===
 submission = pd.DataFrame({
-  "Id": X_test["Id"],  # assuming 'Id' is in test data
-  "SalePrice": y_test_pred
+    "Id": X_test["Id"],
+    "SalePrice": y_test_pred
 })
-
-submission.head()
 
 # %%
 # === Save in submission file ===
-submission.to_csv("../data/submission_hr.csv", index=False)
+submission.to_csv("../data/submission_ridge.csv", index=False)
 
 # %%

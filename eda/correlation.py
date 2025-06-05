@@ -37,6 +37,7 @@ vif_df = pd.DataFrame({
     "VIF": [variance_inflation_factor(X.values, i) for i in range(X.shape[1])]
 })
 print(vif_df)
+
 # %%
 # Individual pairplots for each top correlated feature vs SalePrice
 for feature in top_corr:
