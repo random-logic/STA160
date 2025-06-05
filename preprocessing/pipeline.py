@@ -6,7 +6,38 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.ensemble import RandomForestRegressor
 
+
 # === Custom Transformers ===
+class SkewedFeatureTransformer(BaseEstimator, TransformerMixin):
+  def __init__(self, skew_threshold=1.0):
+    self.skew_threshold = skew_threshold
+    self.skewed_cols_ = []
+    self.zero_inflated_cols_ = []
+
+  def fit(self, X, y=None):
+    numeric_cols = X.select_dtypes(include=[np.number]).columns
+    skew_vals = X[numeric_cols].apply(lambda x: x.skew()).sort_values(ascending=False)
+    self.skewed_cols_ = skew_vals[skew_vals > self.skew_threshold].index.tolist()
+    self.zero_inflated_cols_ = [
+        col for col in self.skewed_cols_
+        if (X[col] == 0).mean() > 0.5 and (X[col] > 0).any()
+    ]
+    return self
+
+  def transform(self, X):
+    X = X.copy()
+    for col in self.skewed_cols_:
+      if col in self.zero_inflated_cols_:
+        X[f"{col}_binary"] = (X[col] > 0).astype(int)
+      X[col] = np.log1p(X[col])
+    return X
+
+  def get_feature_names_out(self, input_features=None):
+    output_features = input_features[:] if input_features else []
+    for col in self.zero_inflated_cols_:
+      if f"{col}_binary" not in output_features:
+        output_features.append(f"{col}_binary")
+    return output_features
 
 class ColumnDropper(BaseEstimator, TransformerMixin):
   def __init__(self, columns_to_drop=[]):
@@ -163,6 +194,7 @@ def get_preprocessor():
       ("num_na_fill", NumericalNaFiller(excluded_cols=['LotFrontage'])), # Example - MasVnrArea
       ("garage_bin", GarageYrBltBinner()),
       ("lotfrontage_fill", LotFrontageFiller()),
+      ("skewed_transform", SkewedFeatureTransformer()),
     ])),
     ('transformer', OneHotEncoderScaler()),
   ])

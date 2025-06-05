@@ -5,10 +5,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from sklearn.pipeline import Pipeline
-from sklearn.linear_model import RidgeCV
+from sklearn.linear_model import HuberRegressor
 from sklearn.metrics import mean_squared_error, r2_score, make_scorer
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.model_selection import cross_val_predict, KFold
+from sklearn.model_selection import GridSearchCV
 
 import scipy.stats as stats
 
@@ -37,47 +38,42 @@ rmse_scorer = make_scorer(
   greater_is_better=False
 )
 
-# RidgeCV with RMSE scoring
-ridge_cv = RidgeCV(
-  alphas=np.logspace(-3, 3, 13),
-  scoring=rmse_scorer,
-  cv=KFold(n_splits=10, shuffle=True, random_state=42)
-)
-
 # Update model_pipeline
 model_pipeline = Pipeline([
   ("preprocessor", get_preprocessor()),
   ("model", TransformedTargetRegressor(
-    regressor=ridge_cv,
+    regressor=HuberRegressor(max_iter=1000, epsilon=1.5),
     func=np.log1p,
     inverse_func=np.expm1
   ))
 ])
 
+# Define parameter grid for HuberRegressor inside the TransformedTargetRegressor
+param_grid = {
+    'model__regressor__alpha': [1e-5], # 1e-4, 1e-3
+    'model__regressor__epsilon': [1.75], # 1.2, 1.35, 1.5
+    'model__regressor__max_iter': [1000] # 500, 2000
+}
+
+# Setup GridSearchCV
+grid_search = GridSearchCV(
+    estimator=model_pipeline,
+    param_grid=param_grid,
+    scoring=rmse_scorer,
+    cv=KFold(n_splits=10, shuffle=True, random_state=42),
+    n_jobs=-1,
+    verbose=1
+)
+
+# Fit grid search
+grid_search.fit(X_train, y_train)
+
+# Replace model_pipeline with best estimator
+model_pipeline = grid_search.best_estimator_
+
 # %%
-# === Cross-validated Predictions for RMSE Check ===
-from sklearn.base import clone
-
-cv = KFold(n_splits=10, shuffle=True, random_state=42)
-val_preds = cross_val_predict(model_pipeline, X_train, y_train, cv=cv)
-val_rmse = np.sqrt(mean_squared_error(y_train, val_preds))
-print(f"Validation RMSE (from cross_val_predict): {val_rmse:.2f}")
-
-# Manual per-fold training RMSE
-train_rmses = []
-
-for train_idx, val_idx in cv.split(X_train):
-  X_tr, X_val = X_train.iloc[train_idx], X_train.iloc[val_idx]
-  y_tr, y_val = y_train.iloc[train_idx], y_train.iloc[val_idx]
-  
-  model_clone = clone(model_pipeline)
-  model_clone.fit(X_tr, y_tr)
-  y_tr_pred = model_clone.predict(X_tr)
-  rmse = np.sqrt(mean_squared_error(y_tr, y_tr_pred))
-  train_rmses.append(rmse)
-
-avg_train_rmse = np.mean(train_rmses)
-print(f"Average Training RMSE (across CV folds): {avg_train_rmse:.2f}")
+# === Results from CV ===
+print(f"Best hyperparameters: {grid_search.best_params_}")
 
 # %%
 # === Fit on full training data ===
@@ -93,6 +89,17 @@ print(f"Train RMSE: {train_rmse:.2f}")
 print(f"Train R² Score: {train_r2:.4f}")
 
 # %%
+# === Compare training vs validation RMSE for overfitting analysis ===
+val_preds_cv = cross_val_predict(model_pipeline, X_train, y_train, cv=KFold(n_splits=10, shuffle=True, random_state=42))
+val_rmse = np.sqrt(mean_squared_error(y_train, val_preds_cv))
+val_r2 = r2_score(y_train, val_preds_cv)
+
+# %%
+# === Output CV ===
+print(f"Validation RMSE (CV): {val_rmse:.2f}")
+print(f"Validation R² Score (CV): {val_r2:.4f}")
+
+# %%
 # === Feature Importances (Linear Model Coefficients) ===
 feature_names = model_pipeline.named_steps['preprocessor'].get_feature_names_out()
 coefs = model_pipeline.named_steps['model'].regressor_.coef_
@@ -105,9 +112,9 @@ coef_df = pd.DataFrame({
 plt.figure(figsize=(10, 12))
 plt.barh(coef_df['Feature'][:30][::-1], coef_df['Coefficient'][:30][::-1])  # Top 30
 plt.xlabel("Coefficient Value")
-plt.title("Top 30 Feature Importances (Ridge Regression Coefficients)")
+plt.title("Top 30 Feature Importances (Huber Regression Coefficients)")
 plt.tight_layout()
-plt.savefig("../fig/lr/feature_importances.png")
+plt.savefig("../fig/hr/feature_importances.png")
 plt.show()
 
 # %%
@@ -121,7 +128,7 @@ plt.xlabel("Predicted SalePrice")
 plt.ylabel("Residuals")
 plt.title("Residuals vs Predicted SalePrice")
 plt.tight_layout()
-plt.savefig("../fig/lr/residuals_vs_predicted.png")
+plt.savefig("../fig/hr/residuals_vs_predicted.png")
 plt.show()
 
 # %%
@@ -129,7 +136,7 @@ plt.show()
 plt.figure(figsize=(6, 6))
 stats.probplot(residuals, dist="norm", plot=plt)
 plt.title("Q-Q Plot of Residuals")
-plt.savefig("../fig/lr/qq_plot_residuals.png")
+plt.savefig("../fig/hr/qq_plot_residuals.png")
 plt.show()
 
 # %%
@@ -147,6 +154,6 @@ submission.head()
 
 # %%
 # === Save in submission file ===
-submission.to_csv("../data/submission_lr.csv", index=False)
+submission.to_csv("../data/submission_hr.csv", index=False)
 
 # %%

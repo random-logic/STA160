@@ -84,6 +84,11 @@ print(f"Train RMSE: {train_rmse:.2f}")
 print(f"Train R² Score: {train_r2:.4f}")
 
 # %%
+# === Check if overfitting ===
+print(f"Best CV RMSE: {-grid_search.best_score_:.2f}")
+print(f"Train RMSE: {train_rmse:.2f}")
+
+# %%
 # === Feature Importances ===
 print("\n=== Feature Importances ===")
 model = model_pipeline.named_steps["model"].regressor_

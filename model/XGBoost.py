@@ -52,12 +52,12 @@ model_pipeline = Pipeline([
 # %%
 # === Hyperparameter Tuning with GridSearchCV ===
 param_grid = {
-  "model__regressor__n_estimators": [50, 100, 200], # 50, 100, 200
-  "model__regressor__max_depth": [3, 6, 10], # 3, 6, 10
-  "model__regressor__learning_rate": [0.01, 0.05, 0.1], # 0.01, 0.05, 0.1
-  "model__regressor__subsample": [0.8, 1.0], # 0.8, 1.0
-  "model__regressor__colsample_bytree": [0.8, 1.0], # 0.8, 1.0
-  "model__regressor__min_child_weight": [1, 3, 5], # 1, 3, 5
+  "model__regressor__n_estimators": [200], # 50, 100, 200
+  "model__regressor__max_depth": [3], # 3, 6, 10
+  "model__regressor__learning_rate": [0.1], # 0.01, 0.05, 0.1
+  "model__regressor__subsample": [0.8], # 0.8, 1.0
+  "model__regressor__colsample_bytree": [1.0], # 0.8, 1.0
+  "model__regressor__min_child_weight": [3], # 1, 3, 5
 }
 
 grid_search = GridSearchCV(model_pipeline, param_grid, cv=10,
@@ -75,7 +75,6 @@ print(f"Best parameters: {grid_search.best_params_}")
 
 '''
 Train RMSE (from CV predictions): 27166.83
-Best CV RMSE: 25592.78
 Best parameters: {'model__regressor__colsample_bytree': 0.8, 'model__regressor__learning_rate': 0.1, 'model__regressor__max_depth': 3, 'model__regressor__min_child_weight': 1, 'model__regressor__n_estimators': 200, 'model__regressor__subsample': 0.8}
 '''
 
@@ -94,6 +93,11 @@ train_r2 = r2_score(y_train, y_train_pred)
 
 print(f"Train RMSE: {train_rmse:.2f}")
 print(f"Train R² Score: {train_r2:.4f}")
+
+# %%
+# === Check if overfitting ===
+print(f"Best CV RMSE: {-grid_search.best_score_:.2f}")
+print(f"Train RMSE: {train_rmse:.2f}")
 
 # %%
 # === Feature Importances ===
