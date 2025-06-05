@@ -118,6 +118,11 @@ plt.barh(feat_imp_df["Feature"][:30][::-1], feat_imp_df["Importance"][:30][::-1]
 plt.xlabel("Importance")
 plt.title("Top 30 Feature Importances (XGBoost)")
 plt.tight_layout()
+
+output_dir = "../fig/xgb"
+os.makedirs(output_dir, exist_ok=True)
+plt.savefig(os.path.join(output_dir, "feature_importances.png"))
+
 plt.show()
 
 # %%
