@@ -108,15 +108,12 @@ class NumericalNaFiller(BaseEstimator, TransformerMixin):
     return input_features
 
 class LotFrontageFiller(BaseEstimator, TransformerMixin):
-  def __init__(self):
-    self.RELEVANT_FEATURES = ['LotArea', 'Neighborhood', 'Street', 'LotConfig']
-
   # We are assuming X is already one hot encoded here
   def fit(self, X, y=None):
     X_known = X[X['LotFrontage'].notnull()]
 
-    # Use only relevant predictors
-    X_train = pd.get_dummies(X_known[self.RELEVANT_FEATURES])
+    # Use all columns except 'LotFrontage'
+    X_train = X_known.drop(columns=['LotFrontage'])
     self.dummy_columns = X_train.columns
     y_train = X_known['LotFrontage']
 
@@ -132,11 +129,8 @@ class LotFrontageFiller(BaseEstimator, TransformerMixin):
     X = X.copy()
     X_missing = X[X['LotFrontage'].isnull()]
 
-    # Use only relevant predictors
-    X_test = pd.get_dummies(X_missing[self.RELEVANT_FEATURES])
-
-    # Align columns in case of one-hot mismatch
-    X_test = X_missing.reindex(columns=self.dummy_columns, fill_value=0)
+    # Use all columns except 'LotFrontage'
+    X_test = X_missing.drop(columns=['LotFrontage'])
 
     # Predict
     X.loc[X['LotFrontage'].isnull(), 'LotFrontage'] = self.model.predict(X_test)
@@ -182,8 +176,8 @@ def get_preprocessor():
       ("cat_na_fill", CategoricalNaFiller(excluded_cols=['GarageYrBlt'])),
       ("num_na_fill", NumericalNaFiller(excluded_cols=['LotFrontage'])), # Example - MasVnrArea
       ("garage_bin", GarageYrBltBinner()),
-      ("lotfrontage_fill", LotFrontageFiller()),
       ("skewed_transform", SkewedFeatureTransformer()),
     ])),
     ('transformer', OneHotEncoderScaler()),
+    ("lotfrontage_fill", LotFrontageFiller()),
   ])

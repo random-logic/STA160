@@ -18,7 +18,9 @@ top_corr = corr_matrix['SalePrice'].abs().sort_values(ascending=False).head(6).i
 plt.figure(figsize=(10, 8))
 sns.heatmap(df[top_corr].corr(), annot=True, fmt=".2f", cmap="coolwarm", square=True)
 plt.title("Heatmap of Top Correlated Features")
+plt.savefig("../fig/eda/heatmap_top_corr.png")
 plt.show()
+plt.close()
 
 
 # %% [markdown]
@@ -41,6 +43,8 @@ for feature in top_corr:
     if feature != 'SalePrice':
         sns.pairplot(df[[feature, 'SalePrice']])
         plt.suptitle(f"Pairplot: {feature} vs SalePrice", y=1.02)
+        plt.savefig(f"../fig/eda/pairplot_{feature}.png")
         plt.show()
+        plt.close()
 
 # %%

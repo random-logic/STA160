@@ -27,7 +27,9 @@ for col in high_skew_cols:
     plt.title(f'Boxplot of {col} (Skewness = {skew_values[col]:.2f})')
     plt.xlabel(col)
     plt.tight_layout()
+    plt.savefig(f"../fig/eda/{col}_boxplot.png")
     plt.show()
+    plt.close()
 
 # %%
 # === Log1p transform highly skewed features ===
@@ -42,7 +44,9 @@ for col in high_skew_cols:
     plt.title(f'Boxplot of Log-Transformed {col}')
     plt.xlabel(col)
     plt.tight_layout()
+    plt.savefig(f"../fig/eda/log_{col}_boxplot.png")
     plt.show()
+    plt.close()
 
 # %%
 # === Target variable distribution ===
@@ -51,7 +55,9 @@ sns.histplot(df['SalePrice'], kde=True)
 plt.title('Distribution of Sale Prices')
 plt.xlabel('Sale Price')
 plt.ylabel('Frequency')
+plt.savefig("../fig/eda/saleprice_distribution.png")
 plt.show()
+plt.close()
 
 # %%
 # === Boxplot of target variable ===
@@ -60,7 +66,9 @@ sns.boxplot(x=df['SalePrice'])
 plt.title('Boxplot of Sale Prices')
 plt.xlabel('Sale Price')
 plt.tight_layout()
+plt.savefig("../fig/eda/saleprice_boxplot.png")
 plt.show()
+plt.close()
 
 # %%
 # === Check skewness after log1p transformation of target variable ===
@@ -75,7 +83,9 @@ sns.histplot(df['SalePrice_log'], kde=True)
 plt.title('Distribution of Log-Transformed Sale Prices')
 plt.xlabel('Log(Sale Price)')
 plt.ylabel('Frequency')
+plt.savefig("../fig/eda/saleprice_log_hist.png")
 plt.show()
+plt.close()
 
 # %%
 # === Boxplot of log-transformed SalePrice ===
@@ -84,7 +94,11 @@ sns.boxplot(x=df['SalePrice_log'])
 plt.title('Boxplot of Log-Transformed Sale Prices')
 plt.xlabel('Log(Sale Price)')
 plt.tight_layout()
+plt.savefig("../fig/eda/saleprice_log_boxplot.png")
 plt.show()
+plt.close()
 
 # %% [markdown]
 # There is a right skew in sale prices (target variable). Applying log1p solves the skewness issue and visually it looks approximately normal.
+
+# %%

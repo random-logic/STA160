@@ -9,6 +9,8 @@ from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.model_selection import GridSearchCV
 
+import copy
+
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -95,6 +97,38 @@ print(f"Train RMSE: {train_rmse:.2f}")
 print(f"Train R² Score: {train_r2:.4f}")
 
 # %%
+# === Residual Plot ===
+import seaborn as sns
+
+residuals = y_train - y_train_pred
+
+plt.figure(figsize=(8, 6))
+sns.scatterplot(x=y_train_pred, y=residuals, alpha=0.5)
+plt.axhline(0, color="red", linestyle="--")
+plt.xlabel("Predicted SalePrice")
+plt.ylabel("Residuals")
+plt.title("Residuals vs. Predicted (XGBoost)")
+plt.tight_layout()
+
+residual_plot_dir = "../fig/xgb"
+os.makedirs(residual_plot_dir, exist_ok=True)
+plt.savefig(os.path.join(residual_plot_dir, "residuals_vs_predicted.png"))
+plt.show()
+
+# %%
+# === QQ Plot ===
+import scipy.stats as stats
+
+plt.figure(figsize=(6, 6))
+stats.probplot(residuals, dist="norm", plot=plt)
+plt.title("QQ Plot of Residuals (XGBoost)")
+plt.tight_layout()
+
+qq_plot_path = os.path.join(residual_plot_dir, "qq_plot.png")
+plt.savefig(qq_plot_path)
+plt.show()
+
+# %%
 # === Check if overfitting ===
 print(f"Best CV RMSE: {-grid_search.best_score_:.2f}")
 print(f"Train RMSE: {train_rmse:.2f}")
@@ -137,7 +171,7 @@ X_train_transformed = model_pipeline.named_steps["preprocessor"].transform(X_tra
 X_train_filtered = X_train_transformed[relevant_features]
 
 # Reuse the best XGBRegressor from grid search
-filtered_model = model_pipeline.named_steps["model"].regressor_
+filtered_model = copy.deepcopy(model_pipeline.named_steps["model"].regressor_)
 
 # Fit on filtered data
 filtered_model.fit(X_train_filtered, y_train)
