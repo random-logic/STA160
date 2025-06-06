@@ -42,7 +42,9 @@ model_pipeline = Pipeline([
         regressor=XGBRegressor(
             n_estimators=100,
             random_state=42,
-            tree_method="hist",
+            tree_method="gpu_hist",
+            predictor="gpu_predictor",
+            device="cuda",
             verbosity=0,
             n_jobs=-1
         ),
