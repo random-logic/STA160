@@ -56,19 +56,12 @@ model_pipeline = Pipeline([
 # %%
 # === Hyperparameter Tuning with GridSearchCV ===
 param_grid = {
-    "model__regressor__n_estimators": [50, 100, 200, 300],
-    "model__regressor__max_depth": [3, 6, 10],
-    "model__regressor__learning_rate": [0.01, 0.05, 0.1],
-    "model__regressor__subsample": [0.6, 0.8, 1.0],
-    "model__regressor__colsample_bytree": [0.6, 0.8, 1.0],
-    "model__regressor__min_child_weight": [1, 3, 5],
-    
-    # 🔥 Additional tuning
-    "model__regressor__gamma": [0, 0.1, 1],                        # min loss reduction to make a further split
-    "model__regressor__reg_alpha": [0, 0.01, 0.1, 1],              # L1 regularization
-    "model__regressor__reg_lambda": [0.1, 1, 10],                  # L2 regularization
-    "model__regressor__max_delta_step": [0, 1, 5],                 # useful for imbalanced data
-    "model__regressor__scale_pos_weight": [1],                    # usually for classification, okay to keep 1
+    "model__regressor__n_estimators": [200], # 50, 100
+    "model__regressor__max_depth": [3], # 6, 10
+    "model__regressor__learning_rate": [0.1], # 0.01, 0.05 
+    "model__regressor__subsample": [0.8], # 0.6, 1.0
+    "model__regressor__colsample_bytree": [0.8], # 0.6, 1.0
+    "model__regressor__min_child_weight": [1], # 3, 5 
 }
 
 grid_search = GridSearchCV(model_pipeline, param_grid, cv=KFold(n_splits=10, shuffle=True, random_state=42),
