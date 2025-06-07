@@ -107,7 +107,7 @@ submission.head()
 
 # %%
 # === Save in submission file ===
-submission.to_csv("../data/submission.csv", index=False)
+submission.to_csv("../data/submission_rf.csv", index=False)
 
 # %%
 # === Evaluate CV and Training Performance to Check Overfitting ===
