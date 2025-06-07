@@ -25,11 +25,6 @@ from preprocessing.pipeline import get_preprocessor
 # %%
 # === Import data ===
 train = pd.read_csv("../data/train.csv")
-# Filter out data points with SalePrice > 300,000
-train = train[train["SalePrice"] <= 350000].reset_index(drop=True)
-# Remove specific outlier IDs with predicted SalePrice > 350K
-outlier_ids_to_remove = [524, 1299, 1360]
-train = train[~train["Id"].isin(outlier_ids_to_remove)].reset_index(drop=True)
 X_test = pd.read_csv("../data/test.csv")
 
 X_train = train.drop("SalePrice", axis=1)
@@ -159,15 +154,3 @@ submission = pd.DataFrame({
 submission.to_csv("../data/submission_ridge.csv", index=False)
 
 # %%
-# === Identify Outliers in Predicted SalePrice > 350K ===
-outlier_threshold = 350000
-outlier_mask = y_train_pred > outlier_threshold
-outlier_ids = X_train.loc[outlier_mask, "Id"].values
-
-print("Outlier IDs with predicted SalePrice > 350K:")
-print(outlier_ids)
-
-# %%
-# Did better with outlier removal
-# 0.12318
-# Below 350k got around 0.12
