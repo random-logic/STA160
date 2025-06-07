@@ -34,8 +34,8 @@ y_train = train["SalePrice"]
 # === Build preprocessing + modeling pipeline ===
 # Define RMSE scorer
 rmse_scorer = make_scorer(
-  lambda y_true, y_pred: np.sqrt(mean_squared_error(y_true, y_pred)),
-  greater_is_better=False
+    lambda y_true, y_pred: np.sqrt(mean_squared_error(np.log1p(y_true), np.log1p(y_pred))),
+    greater_is_better=False
 )
 
 # Update model_pipeline
@@ -50,9 +50,9 @@ model_pipeline = Pipeline([
 
 # Define parameter grid for HuberRegressor inside the TransformedTargetRegressor
 param_grid = {
-    'model__regressor__alpha': [1e-5], # 1e-4, 1e-3
-    'model__regressor__epsilon': [1.75], # 1.2, 1.35, 1.5
-    'model__regressor__max_iter': [1000] # 500, 2000
+    'model__regressor__alpha': [1e-3, 1e-2, 1e-1], # 
+    'model__regressor__epsilon': [1.2], #  1.35, 1.5, 1.75 
+    'model__regressor__max_iter': [500, 1000] # 500, 1000, 2000
 }
 
 # Setup GridSearchCV
@@ -82,7 +82,7 @@ model_pipeline.fit(X_train, y_train)
 # %%
 # === Evaluate on training data ===
 y_train_pred = model_pipeline.predict(X_train)
-train_rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
+train_rmse = np.sqrt(mean_squared_error(np.log1p(y_train), np.log1p(y_train_pred)))
 train_r2 = r2_score(y_train, y_train_pred)
 
 print(f"Train RMSE: {train_rmse:.2f}")
@@ -91,7 +91,7 @@ print(f"Train R² Score: {train_r2:.4f}")
 # %%
 # === Compare training vs validation RMSE for overfitting analysis ===
 val_preds_cv = cross_val_predict(model_pipeline, X_train, y_train, cv=KFold(n_splits=10, shuffle=True, random_state=42))
-val_rmse = np.sqrt(mean_squared_error(y_train, val_preds_cv))
+val_rmse = np.sqrt(mean_squared_error(np.log1p(y_train), np.log1p(val_preds_cv)))
 val_r2 = r2_score(y_train, val_preds_cv)
 
 # %%

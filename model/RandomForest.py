@@ -44,11 +44,9 @@ model_pipeline = Pipeline([
 # %%
 # === Hyperparameter Tuning with GridSearchCV ===
 param_grid = {
-  "model__regressor__n_estimators": [20, 50, 100, 200], # 50
+  "model__regressor__n_estimators": [50, 100, 200], # 50
   "model__regressor__max_depth": [10, 15, 20, None], # 15
-  "model__regressor__min_samples_leaf": [2, 4, 6, 8], # 2
-  "model__regressor__min_samples_split": [2, 4, 6, 8], # 2
-  "model__regressor__max_features": [0.5, "sqrt", "log2"] # 0.5
+  "model__regressor__max_features": [0.5, "sqrt"] # 0.5
 }
 
 cv = KFold(n_splits=10, shuffle=True, random_state=42)

@@ -33,7 +33,7 @@ y_train = train["SalePrice"]
 # %%
 # === Build preprocessing + modeling pipeline ===
 rmse_scorer = make_scorer(
-    lambda y_true, y_pred: np.sqrt(mean_squared_error(y_true, y_pred)),
+    lambda y_true, y_pred: np.sqrt(mean_squared_error(np.log1p(y_true), np.log1p(y_pred))),
     greater_is_better=False
 )
 
@@ -47,8 +47,17 @@ model_pipeline = Pipeline([
 ])
 
 param_grid = {
-    'model__regressor__alpha': [0.1, 1.0, 10.0]
+    'model__regressor__alpha': [0.1, 1.0, 10.0, 100.0]
 }
+
+# === Apply preprocessing manually to remove outliers before fitting ===
+preprocessor = get_preprocessor().named_steps['preprocessing']
+X_test = X_test.copy()
+X_train_clean = preprocessor.fit_transform(X_train)
+X_test_clean = preprocessor.transform(X_test)
+mask = X_train_clean.index
+y_train_clean = y_train.loc[mask].reset_index(drop=True)
+X_train_clean = X_train_clean.reset_index(drop=True)
 
 grid_search = GridSearchCV(
     estimator=model_pipeline,
@@ -59,7 +68,7 @@ grid_search = GridSearchCV(
     verbose=1
 )
 
-grid_search.fit(X_train, y_train)
+grid_search.fit(X_train_clean, y_train_clean)
 model_pipeline = grid_search.best_estimator_
 
 # %%
@@ -68,22 +77,22 @@ print(f"Best hyperparameters: {grid_search.best_params_}")
 
 # %%
 # === Fit on full training data ===
-model_pipeline.fit(X_train, y_train)
+model_pipeline.fit(X_train_clean, y_train_clean)
 
 # %%
 # === Evaluate on training data ===
-y_train_pred = model_pipeline.predict(X_train)
-train_rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
-train_r2 = r2_score(y_train, y_train_pred)
+y_train_pred = model_pipeline.predict(X_train_clean)
+train_rmse = np.sqrt(mean_squared_error(np.log1p(y_train_clean), np.log1p(y_train_pred)))
+train_r2 = r2_score(y_train_clean, y_train_pred)
 
 print(f"Train RMSE: {train_rmse:.2f}")
 print(f"Train R² Score: {train_r2:.4f}")
 
 # %%
 # === Compare training vs validation RMSE ===
-val_preds_cv = cross_val_predict(model_pipeline, X_train, y_train, cv=KFold(n_splits=10, shuffle=True, random_state=42))
-val_rmse = np.sqrt(mean_squared_error(y_train, val_preds_cv))
-val_r2 = r2_score(y_train, val_preds_cv)
+val_preds_cv = cross_val_predict(model_pipeline, X_train_clean, y_train_clean, cv=KFold(n_splits=10, shuffle=True, random_state=42))
+val_rmse = np.sqrt(mean_squared_error(np.log1p(y_train_clean), np.log1p(val_preds_cv)))
+val_r2 = r2_score(y_train_clean, val_preds_cv)
 
 print(f"Validation RMSE (CV): {val_rmse:.2f}")
 print(f"Validation R² Score (CV): {val_r2:.4f}")
@@ -109,7 +118,7 @@ plt.show()
 
 # %%
 # === Plot Residuals ===
-residuals = y_train - y_train_pred
+residuals = y_train_clean - y_train_pred
 
 plt.figure(figsize=(10, 6))
 plt.scatter(y_train_pred, residuals, alpha=0.5)
@@ -131,7 +140,7 @@ plt.show()
 
 # %%
 # === Predict on test data ===
-y_test_pred = model_pipeline.predict(X_test)
+y_test_pred = model_pipeline.predict(X_test_clean)
 
 # %%
 # === Wrap in DataFrame ===
@@ -145,3 +154,5 @@ submission = pd.DataFrame({
 submission.to_csv("../data/submission_ridge.csv", index=False)
 
 # %%
+# Did better with outlier removal
+# 0.12318

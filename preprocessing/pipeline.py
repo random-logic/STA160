@@ -8,6 +8,25 @@ from sklearn.ensemble import RandomForestRegressor
 
 
 # === Custom Transformers ===
+class OutlierRemover(BaseEstimator, TransformerMixin):
+  def __init__(self, z_thresh=4.0, outlier_ratio=0.05):
+    self.z_thresh = z_thresh
+    self.outlier_ratio = outlier_ratio
+    self.cols_to_keep_ = []
+
+  def fit(self, X, y=None):
+    X_numeric = X.select_dtypes(include=["number"])
+    z_scores = np.abs((X_numeric - X_numeric.mean()) / X_numeric.std())
+    outlier_fractions = (z_scores > self.z_thresh).mean()
+    self.cols_to_keep_ = outlier_fractions[outlier_fractions < self.outlier_ratio].index.tolist()
+    return self
+
+  def transform(self, X):
+    return X[self.cols_to_keep_ + X.select_dtypes(exclude=["number"]).columns.tolist()]
+
+  def get_feature_names_out(self, input_features=None):
+    return self.cols_to_keep_
+
 class SkewedFeatureTransformer(BaseEstimator, TransformerMixin):
   def __init__(self, skew_threshold=1.0):
     self.skew_threshold = skew_threshold
@@ -68,6 +87,11 @@ class GarageYrBltBinner(BaseEstimator, TransformerMixin):
   
   def transform(self, X):
     def bin_year(year):
+      try:
+        year = float(year)
+      except (ValueError, TypeError):
+        return "NoGarage"
+
       if pd.isnull(year):
         return "NoGarage"
       elif year < 1940:
@@ -172,10 +196,11 @@ class OneHotEncoderScaler(BaseEstimator, TransformerMixin):
 def get_preprocessor():
   return Pipeline(steps=[
     ('preprocessing', Pipeline(steps=[
-      ("drop_id", ColumnDropper(columns_to_drop=["Id"])),
+      ("drop_id", ColumnDropper(columns_to_drop=["Id"])), # Test to see if it's overfitting the lot frontage, maybe the imputer is causing overfitting
       ("cat_na_fill", CategoricalNaFiller(excluded_cols=['GarageYrBlt'])),
       ("num_na_fill", NumericalNaFiller(excluded_cols=['LotFrontage'])), # Example - MasVnrArea
       ("garage_bin", GarageYrBltBinner()),
+      ("remove_outliers", OutlierRemover()),
       ("skewed_transform", SkewedFeatureTransformer()),
     ])),
     ('transformer', OneHotEncoderScaler()),
