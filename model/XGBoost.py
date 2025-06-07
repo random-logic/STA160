@@ -42,9 +42,6 @@ model_pipeline = Pipeline([
         regressor=XGBRegressor(
             n_estimators=100,
             random_state=42,
-            tree_method="gpu_hist",
-            predictor="gpu_predictor",
-            device="cuda",
             verbosity=0,
             n_jobs=-1
         ),
@@ -65,22 +62,30 @@ param_grid = {
 }
 
 grid_search = GridSearchCV(model_pipeline, param_grid, cv=KFold(n_splits=10, shuffle=True, random_state=42),
-                           scoring="neg_root_mean_squared_error",
+                           scoring="neg_mean_squared_error",
                            n_jobs=-1, verbose=1)
 
 grid_search.fit(X_train, y_train)
 
-# Compute RMSE on cross-validated predictions from the training set
-cv_train_preds = cross_val_predict(grid_search, X_train, y_train, cv=KFold(n_splits=10, shuffle=True, random_state=42))
-cv_train_rmse = np.sqrt(mean_squared_error(y_train, cv_train_preds))
-print(f"Train RMSE (from CV predictions): {cv_train_rmse:.2f}")
-print(f"Best CV RMSE: {-grid_search.best_score_:.2f}")
-print(f"Best parameters: {grid_search.best_params_}")
+from sklearn.metrics import make_scorer
 
-'''
-Train RMSE (from CV predictions): 27166.83
-Best parameters: {'model__regressor__colsample_bytree': 0.8, 'model__regressor__learning_rate': 0.1, 'model__regressor__max_depth': 3, 'model__regressor__min_child_weight': 1, 'model__regressor__n_estimators': 200, 'model__regressor__subsample': 0.8}
-'''
+# Define log-transformed RMSE scorer
+def root_mean_squared_error_log(y_true, y_pred):
+    return np.sqrt(mean_squared_error(np.log1p(y_true), np.log1p(y_pred)))
+
+rmse_scorer = make_scorer(root_mean_squared_error_log, greater_is_better=False)
+
+# Cross-validated RMSE and R²
+cv_rmse_scores = cross_val_score(model_pipeline, X_train, y_train, cv=KFold(n_splits=10, shuffle=True, random_state=42), scoring=rmse_scorer)
+cv_r2_scores = cross_val_score(model_pipeline, X_train, y_train, cv=KFold(n_splits=10, shuffle=True, random_state=42), scoring="r2")
+
+print(f"CV RMSE (log): {-np.mean(cv_rmse_scores):.2f}")
+print(f"CV R² Score: {np.mean(cv_r2_scores):.4f}")
+
+print(f"Best parameters: {grid_search.best_params_}")
+# Convert best score to RMSE
+best_rmse = np.sqrt(-grid_search.best_score_)
+print(f"Best CV RMSE: {best_rmse:.2f}")
 
 # Use the best estimator from the search for further evaluation
 model_pipeline = grid_search.best_estimator_
@@ -97,6 +102,8 @@ train_r2 = r2_score(y_train, y_train_pred)
 
 print(f"Train RMSE: {train_rmse:.2f}")
 print(f"Train R² Score: {train_r2:.4f}")
+train_rmse_log = np.sqrt(mean_squared_error(np.log1p(y_train), np.log1p(y_train_pred)))
+print(f"Train RMSE (log): {train_rmse_log:.2f}")
 
 # %%
 # === Residual Plot ===
@@ -131,11 +138,6 @@ plt.savefig(qq_plot_path)
 plt.show()
 
 # %%
-# === Check if overfitting ===
-print(f"Best CV RMSE: {-grid_search.best_score_:.2f}")
-print(f"Train RMSE: {train_rmse:.2f}")
-
-# %%
 # === Feature Importances ===
 print("\n=== Feature Importances ===")
 model = model_pipeline.named_steps["model"].regressor_
@@ -160,62 +162,6 @@ os.makedirs(output_dir, exist_ok=True)
 plt.savefig(os.path.join(output_dir, "feature_importances.png"))
 
 plt.show()
-
-# %%
-# === Retrain using only relevant features (Importance > 0.001) ===
-# Select relevant features based on importance threshold
-relevant_features = feat_imp_df[feat_imp_df["Importance"] > 0.001]["Feature"].values
-print(f"Selected {len(relevant_features)} relevant features with importance > 0.001")
-
-# Transform and filter training data
-model_pipeline.named_steps["preprocessor"].set_output(transform="pandas")
-X_train_transformed = model_pipeline.named_steps["preprocessor"].transform(X_train)
-X_train_filtered = X_train_transformed[relevant_features]
-
-# Reuse the best XGBRegressor from grid search
-filtered_model = copy.deepcopy(model_pipeline.named_steps["model"].regressor_)
-
-# Fit on filtered data
-filtered_model.fit(X_train_filtered, y_train)
-
-# Evaluate training performance
-y_train_pred_filtered = filtered_model.predict(X_train_filtered)
-train_rmse_filtered = np.sqrt(mean_squared_error(y_train, y_train_pred_filtered))
-train_r2_filtered = r2_score(y_train, y_train_pred_filtered)
-print(f"Train RMSE (filtered features): {train_rmse_filtered:.2f}")
-print(f"Train R² Score (filtered features): {train_r2_filtered:.4f}")
-
-# %%
-# Cross-validation RMSE on filtered data
-from sklearn.model_selection import cross_val_predict
-cv_preds_filtered = cross_val_predict(filtered_model, X_train_filtered, y_train, cv=KFold(n_splits=10, shuffle=True, random_state=42))
-cv_rmse_filtered = np.sqrt(mean_squared_error(y_train, cv_preds_filtered))
-print(f"Validation RMSE (CV) with filtered features: {cv_rmse_filtered:.2f}")
-
-# %%
-# === SHAP Explanation ===
-import shap
-
-model_pipeline.named_steps["preprocessor"].set_output(transform="pandas")
-X_train_transformed = model_pipeline.named_steps["preprocessor"].transform(X_train)
-
-# Initialize SHAP explainer using filtered model and matching data
-explainer = shap.Explainer(filtered_model, X_train_filtered)
-
-# Compute SHAP values
-shap_values = explainer(X_train_filtered)
-
-# Summary plot for global feature importance
-shap.summary_plot(shap_values, X_train_filtered, show=False)
-
-# Save the plot
-shap_output_dir = "../fig/xgb"
-os.makedirs(shap_output_dir, exist_ok=True)
-plt.savefig(os.path.join(shap_output_dir, "shap_summary.png"))
-plt.close()
-
-# Optional: show SHAP values for first training instance
-shap.plots.waterfall(shap_values[0])
 
 # %%
 # === Predict on test data ===
