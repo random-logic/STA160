@@ -44,9 +44,9 @@ model_pipeline = Pipeline([
 # %%
 # === Hyperparameter Tuning with GridSearchCV ===
 param_grid = {
-  "model__regressor__n_estimators": [50, 100, 200], # 50
-  "model__regressor__max_depth": [10, 15, 20, None], # 15
-  "model__regressor__max_features": [0.5, "sqrt"] # 0.5
+  "model__regressor__n_estimators": [100], # 50, 200
+  "model__regressor__max_depth": [None], # 10, 15, 20
+  "model__regressor__max_features": [0.5] # "sqrt"
 }
 
 cv = KFold(n_splits=10, shuffle=True, random_state=42)
@@ -60,16 +60,8 @@ grid_search = GridSearchCV(
   verbose=1
 )
 
-
 grid_search.fit(X_train, y_train)
 
-# Compute RMSE on cross-validated predictions from the training set
-from sklearn.model_selection import cross_val_predict
-
-cv_train_preds = cross_val_predict(grid_search, X_train, y_train, cv=cv)
-cv_train_rmse = np.sqrt(mean_squared_error(y_train, cv_train_preds))
-print(f"Train RMSE (from CV predictions): {cv_train_rmse:.2f}")
-print(f"Best CV RMSE: {-grid_search.best_score_:.2f}")
 print(f"Best parameters: {grid_search.best_params_}")
 
 # Use the best estimator from the search for further evaluation
@@ -78,15 +70,6 @@ model_pipeline = grid_search.best_estimator_
 # %%
 # === Fit on full training data ===
 model_pipeline.fit(X_train, y_train)
-
-# %%
-# === Evaluate on training data ===
-y_train_pred = model_pipeline.predict(X_train)
-train_rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
-train_r2 = r2_score(y_train, y_train_pred)
-
-print(f"Train RMSE: {train_rmse:.2f}")
-print(f"Train R² Score: {train_r2:.4f}")
 
 # %%
 # === Feature Importances ===
@@ -125,5 +108,30 @@ submission.head()
 # %%
 # === Save in submission file ===
 submission.to_csv("../data/submission.csv", index=False)
+
+# %%
+# === Evaluate CV and Training Performance to Check Overfitting ===
+from sklearn.model_selection import cross_val_predict
+
+# Cross-validated predictions
+cv = KFold(n_splits=10, shuffle=True, random_state=42)
+cv_preds = cross_val_predict(model_pipeline, X_train, y_train, cv=cv)
+
+# CV Metrics
+cv_log_rmse = np.sqrt(mean_squared_error(np.log1p(y_train), np.log1p(cv_preds)))
+cv_r2 = r2_score(y_train, cv_preds)
+
+# Training Metrics
+y_train_pred = model_pipeline.predict(X_train)
+train_log_rmse = np.sqrt(mean_squared_error(np.log1p(y_train), np.log1p(y_train_pred)))
+train_r2 = r2_score(y_train, y_train_pred)
+
+print("=== Cross-Validation Performance ===")
+print(f"CV Log RMSE: {cv_log_rmse:.2f}")
+print(f"CV R² Score: {cv_r2:.4f}")
+
+print("\n=== Training Performance ===")
+print(f"Train Log RMSE: {train_log_rmse:.2f}")
+print(f"Train R² Score: {train_r2:.4f}")
 
 # %%
